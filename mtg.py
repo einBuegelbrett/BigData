@@ -6,15 +6,13 @@ from airflow.operators.filesystem_operations import ClearDirectoryOperator
 from datetime import datetime, timedelta
 import requests
 import json
+import os
 
 args = {
     'owner': 'airflow'
 }
 
-dag = DAG('MTG', default_args=args, description='MTG API',
-
-schedule_interval='56 18 * * *',
-start_date=datetime(2019, 10, 16), catchup=False, max_active_runs=1)
+dag = DAG('MTG', default_args=args, description='MTG API', schedule_interval=None, start_date=datetime(2024, 11, 10), catchup=False, max_active_runs=1)
 
 def call_api():
     url = "https://api.magicthegathering.io/v1/cards"
@@ -26,25 +24,37 @@ def call_api():
     with open(output_file, "w") as file:
         json.dump(data, file)
 
-def output_json_file():
-    input_file = '/home/airflow/mtg/mtg_cards_raw.json'
-    print("test")
-    with open(input_file, "r") as file:
-        data = json.load(file)
-        # Extract the first element from the list of cards
-        first_card = data['cards'][0] if 'cards' in data and data['cards'] else None
-        print("First card data:", first_card)
-
-create_local_import_dir = CreateDirectoryOperator(
-    task_id='create_import_dir',
+create_local_mtg_dir = CreateDirectoryOperator(
+    task_id='create_mtg_dir',
     path='/home/airflow',
     directory='mtg',
     dag=dag,
 )
 
-clear_local_import_dir = ClearDirectoryOperator(
-    task_id='clear_import_dir',
-    directory='/home/airflow/mtg',
+create_local_raw_dir = CreateDirectoryOperator(
+    task_id='create_raw_dir',
+    path='/home/airflow/mtg',
+    directory='raw',
+    dag=dag,
+)
+
+create_local_final_dir = CreateDirectoryOperator(
+    task_id='create_final_dir',
+    path='/home/airflow/mtg',
+    directory='final',
+    dag=dag,
+)
+
+clear_local_raw_dir = ClearDirectoryOperator(
+    task_id='clear_raw_dir',
+    directory='/home/airflow/mtg/raw',
+    pattern='*',
+    dag=dag,
+)
+
+clear_local_final_dir = ClearDirectoryOperator(
+    task_id='clear_final_dir',
+    directory='/home/airflow/mtg/final',
     pattern='*',
     dag=dag,
 )
@@ -55,10 +65,4 @@ api_call_task = PythonOperator(
     dag=dag,
 )
 
-output_json_task = PythonOperator(
-    task_id='output_json_task',
-    python_callable=output_json_file,
-    dag=dag,
-)
-
-create_local_import_dir >> clear_local_import_dir >> api_call_task >> output_json_task
+create_local_mtg_dir >> create_local_raw_dir >> create_local_final_dir >> clear_local_raw_dir >> clear_local_final_dir  >> api_call_task
