@@ -3,7 +3,7 @@ from airflow.operators.http_download_operations import HttpDownloadOperator
 from airflow.contrib.operators.spark_submit_operator import SparkSubmitOperator
 from airflow.operators.filesystem_operations import CreateDirectoryOperator
 from airflow.operators.filesystem_operations import ClearDirectoryOperator
-from airflow.operators.hdfs_operations import HdfsPutFileOperator
+from airflow.operators.hdfs_operations import HdfsPutFileOperator, HdfsMkdirFileOperator
 from datetime import datetime
 
 args = {
@@ -25,6 +25,19 @@ CREATE EXTERNAL TABLE IF NOT EXISTS mtg_raw_data (
 )
 STORED AS TEXTFILE
 LOCATION '/user/hadoop/raw/mtg_cards';
+'''
+
+create_mtg_names_table_sql = '''
+CREATE TABLE IF NOT EXISTS mtg_names (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255)
+);
+'''
+
+insert_mtg_names_sql = '''
+INSERT INTO mtg_names (name)
+SELECT name
+FROM mtg_raw_data;
 '''
 
 create_local_mtg_dir = CreateDirectoryOperator(
@@ -69,11 +82,24 @@ download_mtg_cards = HttpDownloadOperator(
     dag=dag,
 )
 
+hdfs_create_cards_raw_dir = HdfsMkdirFileOperator(
+    task_id='hdfs_mkdir_raw_cards',
+    directory='/user/hadoop/mtg/raw/{{ macros.ds_format(ds, "%Y-%m-%d", "%Y")}}/{{ macros.ds_format(ds, "%Y-%m-%d", "%m")}}/{{ macros.ds_format(ds, "%Y-%m-%d", "%d")}}',
+    hdfs_conn_id='hdfs',
+    dag=dag,
+)
+
+hdfs_create_cards_final_dir = HdfsMkdirFileOperator(
+    task_id='hdfs_mkdir_final_cards',
+    directory='/user/hadoop/mtg/final/{{ macros.ds_format(ds, "%Y-%m-%d", "%Y")}}/{{ macros.ds_format(ds, "%Y-%m-%d", "%m")}}/{{ macros.ds_format(ds, "%Y-%m-%d", "%d")}}',
+    hdfs_conn_id='hdfs',
+    dag=dag,
+)
 
 hdfs_put_mtg_data = HdfsPutFileOperator(
     task_id='upload_mtg_data_to_hdfs',
     local_file='/home/airflow/mtg/raw/cards_{{ ds }}.json',
-    remote_file='/user/hadoop/mtg/raw/mtg_cards_raw.json',
+    remote_file='/user/hadoop/mtg/raw/{{ macros.ds_format(ds, "%Y-%m-%d", "%Y")}}/{{ macros.ds_format(ds, "%Y-%m-%d", "%m")}}/{{ macros.ds_format(ds, "%Y-%m-%d", "%d")}}/cards_{{ ds }}.json',
     hdfs_conn_id='hdfs',
     dag=dag,
 )
@@ -88,8 +114,21 @@ pyspark_mtg_important_data = SparkSubmitOperator(
     num_executors='2',
     name='spark_get_mtg_important_data',
     verbose=True,
-    application_args=['--hdfs_source_dir', '/user/hadoop/mtg/raw', '--hdfs_target_dir', '/user/hadoop/mtg/final/mtg_cards_final', '--hdfs_target_format', 'json'],
+    application_args=['--year', '{{ macros.ds_format(ds, "%Y-%m-%d", "%Y")}}', '--month', '{{ macros.ds_format(ds, "%Y-%m-%d", "%m")}}', '--day',  '{{ macros.ds_format(ds, "%Y-%m-%d", "%d")}}', '--hdfs_source_dir', '/user/hadoop/mtg/raw', '--hdfs_target_dir', '/user/hadoop/mtg/final/mtg_cards_final', '--hdfs_target_format', 'json'],
     dag = dag
 )
 
-create_local_mtg_dir >> create_local_raw_dir >> create_local_final_dir >> clear_local_raw_dir >> clear_local_final_dir >> download_mtg_cards >> hdfs_put_mtg_data >> pyspark_mtg_important_data
+pyspark_export_cards = SparkSubmitOperator(
+    task_id='pyspark_export_cards_to_postgresql',
+    conn_id='spark',
+    application='/home/airflow/airflow/python/pyspark_export_cards.py',
+    total_executor_cores='2',
+    executor_cores='2',
+    executor_memory='2g',
+    num_executors='2',
+    name='spark_export_cards_to_postgresql',
+    verbose=True,
+    dag = dag
+)
+
+create_local_mtg_dir >> create_local_raw_dir >> create_local_final_dir >> clear_local_raw_dir >> clear_local_final_dir >> download_mtg_cards >> hdfs_create_cards_raw_dir >> hdfs_create_cards_final_dir >> hdfs_put_mtg_data >> pyspark_mtg_important_data >> pyspark_export_cards
