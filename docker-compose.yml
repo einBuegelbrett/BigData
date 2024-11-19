@@ -1,0 +1,67 @@
+version: '3.7'
+
+services:
+  frontend:
+    container_name: frontend
+    build: ./Frontend
+    command: ng serve --host
+    ports:
+      - "4200:4200"
+    networks:
+      bigdatanet:
+
+  hadoop:
+    container_name: hadoop
+    image: marcelmittelstaedt/spark_base:latest
+    ports:
+     - "8088:8088"
+     - "9870:9870"
+     - "9864:9864"
+     - "10000:10000"
+     - "8032:8032"
+     - "8030:8030"
+     - "8031:8031"
+     - "9000:9000"
+     - "8888:8888"
+    volumes:
+    - type: bind
+      source: ./airflow/python
+      target: /home/airflow/airflow/python/
+    networks:
+      bigdatanet:
+    command: >
+      bash -c "sudo su hadoop -c 'cd && start-all.sh && tail -f /dev/null'"
+
+  airflow:
+    container_name: airflow
+    build: ./airflow
+    ports:
+     - "8080:8080"
+    volumes:
+     - type: bind
+       source: ./airflow/dags
+       target: /home/airflow/airflow/dags/
+     - type: bind
+       source: ./airflow/python
+       target: /home/airflow/airflow/python/
+    networks:
+      bigdatanet:
+
+  postgresql:
+    container_name: postgresql
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+      POSTGRES_HOST: postgresql
+    ports:
+      - "5432:5432"
+    networks:
+      bigdatanet:
+
+networks:
+  bigdatanet:
+
+volumes:
+  postgresql:
