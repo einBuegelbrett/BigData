@@ -1,17 +1,22 @@
-# Use an official Node.js runtime as a parent image
-FROM node:latest AS build
+# Use a Node.js base image
+FROM node:18-alpine
 
 # Set the working directory
-WORKDIR /app
+WORKDIR /usr/src/app
 
-# Copy the package.json and package-lock.json files
-COPY package*.json ./
+# Copy package.json and package-lock.json
+COPY package.json package-lock.json ./
 
-# Install the dependencies
+# Install dependencies, including Angular CLI
+RUN npm install -g @angular/cli
 RUN npm install
 
-# Copy the rest of the application code
+# Copy the Angular application source code
 COPY . .
 
-# Build the Angular application
-RUN npm run build --prod
+# Expose the port the Angular app runs on
+EXPOSE 4200
+
+# Default command to serve the Angular app
+CMD ["ng", "serve", "--host", "0.0.0.0"]
+
