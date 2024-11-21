@@ -1,8 +1,7 @@
 import pyspark
 from pyspark.sql import SparkSession
-from pyspark import SparkContext
 import argparse
-from pyspark.sql.functions import col, expr, explode, concat_ws
+from pyspark.sql.functions import col, expr, explode, concat_ws, when
 
 
 def get_args():
@@ -33,23 +32,27 @@ if __name__ == '__main__':
     # Read raw cards from HDFS
     mtg_cards_df = spark.read.json(f'/user/hadoop/mtg/raw/{args.year}/{args.month}/{args.day}')
 
-    # Explode the array into single elements
-    mtg_cards_exploded_df = mtg_cards_df \
-        .select(explode('cards').alias('exploded')) \
-        .select('exploded.*')
+    # Karten und foreignNames extrahieren
+    cards_df = mtg_cards_df.select(explode(col("cards")).alias("card"))
 
-    # Replace all null values with empty strings
-    mtg_cards_renamed_null_df = mtg_cards_exploded_df \
-        .na.fill('')
+    english_cards_df = cards_df.filter(
+        col("card.foreignNames").isNull()
+    ).select(
+        col("card.name").alias("name"),
+        when(col("card.imageUrl").isNotNull(), col("card.imageUrl"))
+        .otherwise("No Image Available")
+        .alias("imageUrl")
+    )
 
-    # Remove all unnecessary columns
-    columns = ['name', 'subtypes', 'text', 'flavor', 'artist', 'multiverseid', 'imageUrl']
-    reduced_cards_df = mtg_cards_renamed_null_df.select(*columns)
 
-    # Flatten the subtypes from an array to a comma seperated string
-    flattened_subtypes_df = reduced_cards_df.withColumn('subtypes', concat_ws(', ', 'subtypes'))
+    filtered_json = english_cards_df.toJSON().collect()
+    print("TEST")
+    for json_row in filtered_json:
+        print(json_row)
 
-    # Write data to HDFS
-    flattened_subtypes_df.write.format('json') \
-        .mode('overwrite') \
-        .save(f'/user/hadoop/mtg/final/{args.year}/{args.month}/{args.day}')
+    # Ausgabe in das Zielverzeichnis schreiben
+    output_path = f"{args.hdfs_target_dir}/{args.year}/{args.month}/{args.day}"
+    english_cards_df.write.format(args.hdfs_target_format).mode('overwrite').save(output_path)
+
+    # Spark-Session beenden
+    spark.stop()

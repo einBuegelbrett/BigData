@@ -12,34 +12,6 @@ args = {
 
 dag = DAG('MTG', default_args=args, description='MTG API', schedule_interval=None, start_date=datetime(2024, 11, 10), catchup=False, max_active_runs=1)
 
-hiveQL_create_table_mtg_raw_data = '''
-CREATE EXTERNAL TABLE IF NOT EXISTS mtg_raw_data (
-    id STRING, 
-    name STRING, 
-    manaCost STRING, 
-    colors ARRAY<STRING>, 
-    type STRING, 
-    rarity STRING, 
-    setName STRING, 
-    text STRING
-)
-STORED AS TEXTFILE
-LOCATION '/user/hadoop/raw/mtg_cards';
-'''
-
-create_mtg_names_table_sql = '''
-CREATE TABLE IF NOT EXISTS mtg_names (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255)
-);
-'''
-
-insert_mtg_names_sql = '''
-INSERT INTO mtg_names (name)
-SELECT name
-FROM mtg_raw_data;
-'''
-
 create_local_mtg_dir = CreateDirectoryOperator(
     task_id='create_mtg_dir',
     path='/home/airflow',
@@ -108,14 +80,14 @@ pyspark_mtg_important_data = SparkSubmitOperator(
     task_id='pyspark_mtg_important_data_to_final',
     conn_id='spark',
     application='/home/airflow/airflow/python/pyspark_mtg_important_data.py',
-    total_executor_cores='1',
-    executor_cores='1',
-    executor_memory='1g',
-    num_executors='1',
+    total_executor_cores='2',
+    executor_cores='2',
+    executor_memory='2g',
+    num_executors='2',
     driver_memory='2g',
     name='spark_get_mtg_important_data',
     verbose=True,
-    application_args=['--year', '{{ macros.ds_format(ds, "%Y-%m-%d", "%Y")}}', '--month', '{{ macros.ds_format(ds, "%Y-%m-%d", "%m")}}', '--day',  '{{ macros.ds_format(ds, "%Y-%m-%d", "%d")}}', '--hdfs_source_dir', '/user/hadoop/mtg/raw', '--hdfs_target_dir', '/user/hadoop/mtg/final/mtg_cards_final', '--hdfs_target_format', 'json'],
+    application_args=['--year', '{{ macros.ds_format(ds, "%Y-%m-%d", "%Y")}}', '--month', '{{ macros.ds_format(ds, "%Y-%m-%d", "%m")}}', '--day',  '{{ macros.ds_format(ds, "%Y-%m-%d", "%d")}}', '--hdfs_source_dir', '/user/hadoop/mtg/raw', '--hdfs_target_dir', '/user/hadoop/mtg/final', '--hdfs_target_format', 'json'],
     dag = dag
 )
 
@@ -123,10 +95,10 @@ pyspark_export_cards = SparkSubmitOperator(
     task_id='pyspark_export_cards_to_postgresql',
     conn_id='spark',
     application='/home/airflow/airflow/python/pyspark_export_cards_db.py',
-    total_executor_cores='1',
-    executor_cores='1',
-    executor_memory='1g',
-    num_executors='1',
+    total_executor_cores='2',
+    executor_cores='2',
+    executor_memory='2g',
+    num_executors='2',
     driver_memory='2g',
     name='spark_export_cards_to_postgresql',
     verbose=True,

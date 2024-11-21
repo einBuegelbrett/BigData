@@ -48,11 +48,6 @@ if __name__ == '__main__':
     cur.execute("""
         CREATE TABLE IF NOT EXISTS cards (
             name VARCHAR(255),
-            subtypes VARCHAR(255),
-            text TEXT,
-            flavor TEXT,
-            artist VARCHAR(255),
-            multiverseid VARCHAR(255),
             imageUrl VARCHAR(255)
         );
     """)
@@ -72,9 +67,9 @@ if __name__ == '__main__':
     '''
     for row in processed_cards_df.collect():
         cur.execute("""
-            INSERT INTO cards (name, subtypes, text, flavor, artist, multiverseid, imageUrl)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (row['name'], row['subtypes'], row['text'], row['flavor'], row['artist'], row['multiverseid'], row['imageUrl']))
+            INSERT INTO cards (name, imageUrl)
+            VALUES (%s, %s)
+        """, (row['name'], row['imageUrl']))
 
     conn.commit()
 
