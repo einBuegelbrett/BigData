@@ -1,0 +1,8 @@
+<div class="card-container">
+  @for (card of cards; track card) {
+    <div class="card">
+      <img src="{{ card.imageurl }}" alt="Image of {{ card.name }}">
+      <div class="card-name">{{ card.name }}</div>
+    </div>
+  }
+</div>
