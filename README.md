@@ -21,18 +21,20 @@ cd
 start-all.sh
 ```
 
+**Due to the limited resources set by Docker, you can use the `LIMIT` variable in `pyspark_get_cards.py` to set the number of pages read from the API.**
+
 ---
 
 ## ETL Workflow
 
 ### 1. **Extraction**
-- **Task:** `download_mtg_cards`
-    - **Description:** Fetches card data from the MTG API and stores it in local raw directories.
+- **Task:** `pyspark_get_cards`
+    - **Description:** Fetches card data from the MTG API and uploads it in hdfs.
     - **Business Rule:** Downloaded data must be stored in JSON format with unique filenames using the Airflow execution date.
 
 ### 2. **Transformation**
 - **Task:** `pyspark_mtg_important_data_to_final`
-    - **Description:** Processes raw card data using PySpark to extract important fields (e.g., card name, mana cost, type).
+    - **Description:** Processes raw card data using PySpark to extract important fields (card name and image url).
     - **Business Rule:** Only cards with complete data are retained. The processed data is saved in HDFS in JSON format.
 
 ### 3. **Load**
@@ -40,8 +42,7 @@ start-all.sh
     - **Description:** Uploads raw JSON data to HDFS for long-term storage.
 - **Task:** `pyspark_export_cards_to_postgresql`
     - **Description:** Transfers the final processed card data to PostgreSQL for analysis.
-    - **Business Rule:** Each card name is stored in a normalized table for deduplication and quick lookups.
-
+  
 ---
 
 ## Airflow DAGs and Tasks
@@ -50,25 +51,16 @@ start-all.sh
 **Description:** Orchestrates the entire ETL pipeline for fetching, processing, and storing MTG card data.
 
 #### Tasks:
-1. **Create Local Directories**
-    - `create_mtg_dir`, `create_raw_dir`, `create_final_dir`
-    - Ensure required local directories exist for raw and final data storage.
-2. **Clear Old Data**
-    - `clear_raw_dir`, `clear_final_dir`
-    - Remove old files to prepare for new data.
-3. **Download Data**
-    - `download_mtg_cards`
-    - Fetch card data from the MTG API.
-4. **HDFS Directory Setup**
+1. **HDFS Directory Setup**
     - `hdfs_mkdir_raw_cards`, `hdfs_mkdir_final_cards`
     - Create HDFS directories for raw and processed data.
-5. **Upload to HDFS**
-    - `upload_mtg_data_to_hdfs`
-    - Upload raw JSON data to HDFS.
-6. **Process Data**
+2. **Download data**
+    - `pyspark_get_cards`
+    - Gets the cards from the API
+3. **Process Data**
     - `pyspark_mtg_important_data_to_final`
     - Use PySpark to process and filter card data.
-7. **Export to Database**
+4. **Export to Database**
     - `pyspark_export_cards_to_postgresql`
     - Save the processed data to a PostgreSQL database.
 
@@ -79,26 +71,20 @@ start-all.sh
 ### 1. **Python Scripts**
 - **Path:** `airflow/python/`
 - **Scripts:**
+    - `pyspark_get_cards.py`
+      - Gets the cards from the API
     - `pyspark_mtg_important_data.py`
-        - Processes raw card data to extract relevant fields.
+      - Processes raw card data to extract relevant fields.
     - `pyspark_export_cards_db.py`
-        - Exports processed card data to PostgreSQL.
+      - Exports processed card data to PostgreSQL.
 
 ### 2. **DDL Scripts**
-- **DDL for MTG Raw Data (Hive):**
+- **DDL for MTG Final Data**
 ```sql
-CREATE EXTERNAL TABLE IF NOT EXISTS mtg_raw_data (
-    id STRING, 
-    name STRING, 
-    manaCost STRING, 
-    colors ARRAY<STRING>, 
-    type STRING, 
-    rarity STRING, 
-    setName STRING, 
-    text STRING
-)
-STORED AS TEXTFILE
-LOCATION '/user/hadoop/raw/mtg_cards';
+CREATE TABLE IF NOT EXISTS cards (
+    name VARCHAR(255),
+    imageUrl VARCHAR(255)
+);
 ```
 
 ---
@@ -111,4 +97,4 @@ LOCATION '/user/hadoop/raw/mtg_cards';
 
 ## Frontend
 - **Folder:** `Frontend/`
-- **Contains:** Source code for the web application to visualize MTG card data and calculated KPIs.
+- **Contains:** Source code for the web application to visualize MTG card data.

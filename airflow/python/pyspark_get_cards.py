@@ -4,6 +4,9 @@ import requests
 import os
 from pyspark.sql import SparkSession
 
+# Set amout of pages in case docker doesn't deliver enough ressources
+LIMIT = 1
+
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--year', help='Partition Year To Process', required=True, type=str)
@@ -32,6 +35,9 @@ if __name__ == '__main__':
     mtg_cards = []
     url = 'https://api.magicthegathering.io/v1/cards'
 
+    # set counter for the limit
+    counter = 0
+
     # Go through the different pages of the API
     while url:
         print(f"Fetching data from {url}")
@@ -40,7 +46,9 @@ if __name__ == '__main__':
             break
         mtg_cards.append(json.dumps(response.json()))
         url = response.links.get('next', {}).get('url')
-        # break
+        counter += 1
+        if counter == LIMIT:
+            break
 
     if mtg_cards:
         mtg_cards_rdd = spark.sparkContext.parallelize(mtg_cards)
