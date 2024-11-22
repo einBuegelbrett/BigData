@@ -5,7 +5,7 @@ import os
 from pyspark.sql import SparkSession
 
 # Set amout of pages in case docker doesn't deliver enough ressources
-LIMIT = 1
+LIMIT = 5
 
 def get_args():
     parser = argparse.ArgumentParser()

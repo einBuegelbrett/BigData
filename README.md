@@ -79,7 +79,7 @@ start-all.sh
       - Exports processed card data to PostgreSQL.
 
 ### 2. **DDL Scripts**
-- **DDL for MTG Final Data**
+- **DDL for creating the final data table**
 ```sql
 CREATE TABLE IF NOT EXISTS cards (
     name VARCHAR(255),
@@ -90,8 +90,9 @@ CREATE TABLE IF NOT EXISTS cards (
 ---
 
 ## Backend
-- **Folder:** `Backend/src/`
+- **Folder:** `Backend/`
 - **Contains:**
+    - `index.ts`: Entry point for the backend application.
     - `Dockerfile`: Environment setup for the backend.
     - `package.json`, `tsconfig.json`: Node.js configuration files for API or backend services.
 

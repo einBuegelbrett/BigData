@@ -23,7 +23,7 @@ app.use(express.json());
 // GET Request to Fetch all Cards
 app.get('/cards', async (req: Request, res: Response) => {
     try {
-        const result = await pool.query('SELECT * FROM cards LIMIT 100');
+        const result = await pool.query('SELECT * FROM cards LIMIT 102');
         res.json(result.rows);
     } catch (error) {
         console.error('Error fetching cards:', error);
@@ -35,7 +35,7 @@ app.get('/cards', async (req: Request, res: Response) => {
 app.get('/cards/:name', async (req: Request, res: Response) => {
     const { name } = req.params;
     try {
-        const result = await pool.query('SELECT * FROM cards WHERE name ILIKE $1 LIMIT 100', [`%${name}%`]);
+        const result = await pool.query('SELECT * FROM cards WHERE name ILIKE $1 LIMIT 102', [`%${name}%`]);
         res.json(result.rows);
     } catch (error) {
         console.error('Error fetching card:', error);
