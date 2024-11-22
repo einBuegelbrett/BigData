@@ -1,3 +1,7 @@
-<h1>Search Cards: </h1>
-<input type="text" [(ngModel)]="searchText" placeholder="Search Cards">
-<button class="search-button" (click)="searchCard()">Search!</button>
+<div class="header">
+  <h1>Search Cards:</h1>
+  <div class="search-bar">
+    <input type="text" [(ngModel)]="searchText" (keydown.enter)="searchCard()" placeholder="Search Cards">
+    <button class="search-button" (click)="searchCard()">Search!</button>
+  </div>
+</div>

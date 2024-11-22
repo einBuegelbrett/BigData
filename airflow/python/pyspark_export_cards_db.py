@@ -1,10 +1,7 @@
-import pyspark
 import argparse
 import json
 import psycopg2
 from pyspark.sql import SparkSession
-from pyspark import SparkContext
-from pyspark.sql.functions import col, expr, explode, concat_ws
 
 def get_args():
     """
@@ -19,15 +16,8 @@ def get_args():
 
 
 if __name__ == '__main__':
-    """
-    Export final cards to PostgreSQL.
-    """
-    # Parse Command Line Args
     args = get_args()
-
-    spark = SparkSession.builder \
-        .appName("spark_export_cards_to_postgresql") \
-        .getOrCreate()
+    spark = SparkSession.builder.appName("spark_export_cards_to_postgresql").getOrCreate()
 
     # Read final cards as json from HDFS
     processed_cards_df = spark.read.json(f'/user/hadoop/mtg/final/{args.year}/{args.month}/{args.day}')
@@ -37,7 +27,7 @@ if __name__ == '__main__':
 
     # Connect to PostgreSQL
     conn = psycopg2.connect(
-        host="postgresql",  # Name des PostgreSQL-Containers
+        host="postgresql",
         port="5432",
         database="postgres",
         user="postgres",
@@ -45,6 +35,11 @@ if __name__ == '__main__':
     )
     cur = conn.cursor()
 
+    # Remove all records from the table to remove any data that was already present
+    cur.execute("DROP TABLE IF EXISTS cards;")
+    conn.commit()
+
+    # Create a table
     cur.execute("""
         CREATE TABLE IF NOT EXISTS cards (
             name VARCHAR(255),
@@ -53,18 +48,7 @@ if __name__ == '__main__':
     """)
     conn.commit()
 
-    # Remove all records from the table
-    cur.execute("DELETE FROM cards")
-    conn.commit()
-
-    '''
-    # Insert new records
-    for card in mtg_cards_json:
-        columns = card.keys()
-        values = [card[column] for column in columns]
-        insert_statement = f"INSERT INTO cards ({', '.join(columns)}) VALUES %s"
-        cur.execute(insert_statement, (tuple(values),))
-    '''
+    # Insert data into the table
     for row in processed_cards_df.collect():
         cur.execute("""
             INSERT INTO cards (name, imageUrl)

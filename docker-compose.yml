@@ -29,8 +29,6 @@ services:
       target: /home/airflow/airflow/python/
     networks:
       bigdatanet:
-    command: >
-      bash -c "sudo su hadoop -c 'cd && start-all.sh && tail -f /dev/null'"
 
   airflow:
     container_name: airflow

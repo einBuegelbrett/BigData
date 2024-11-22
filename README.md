@@ -13,7 +13,13 @@ The system uses a **docker-compose** configuration to manage services:
 - PostgreSQL
 - Frontend and Backend applications
 
-Simply start this docker-compose configuration to run the entire system.
+Just run this docker-compose configuration to run the whole system. Once the containers are running, start the hadoop cluster:
+```
+docker exec -it hadoop bash
+sudo su hadoop
+cd
+start-all.sh
+```
 
 ---
 

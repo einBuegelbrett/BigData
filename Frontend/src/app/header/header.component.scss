@@ -1,4 +1,24 @@
-.search-button {
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.search-bar {
+  display: flex;
+  gap: 0.5rem;
+}
+
+input {
+  padding: 0.5rem;
+  font-size: 1rem;
+}
+
+button.search-button {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  cursor: pointer;
   background-color: green;
   color: white;
 }
