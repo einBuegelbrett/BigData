@@ -30,12 +30,10 @@ start-all.sh
 ### 1. **Extraction**
 - **Task:** `pyspark_get_cards`
     - **Description:** Fetches card data from the MTG API and uploads it in hdfs.
-    - **Business Rule:** Downloaded data must be stored in JSON format with unique filenames using the Airflow execution date.
 
 ### 2. **Transformation**
 - **Task:** `pyspark_mtg_important_data_to_final`
     - **Description:** Processes raw card data using PySpark to extract important fields (card name and image url).
-    - **Business Rule:** Only cards with complete data are retained. The processed data is saved in HDFS in JSON format.
 
 ### 3. **Load**
 - **Task:** `hdfs_put_mtg_data`
